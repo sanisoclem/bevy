@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 
+mod top_down;
+
 fn main() {
     App::build()
         .add_resource(Msaa { samples: 4 })
         .add_default_plugins()
+        .add_plugin(top_down::TopDownPlugin::default())
         .add_startup_system(setup.system())
         .run();
 }
@@ -18,7 +21,7 @@ fn setup(
     commands
         // plane
         .spawn(PbrComponents {
-            mesh: meshes.add(Mesh::from(shape::Plane { size: 10.0 })),
+            mesh: meshes.add(Mesh::from(shape::Plane { size: 100.0 })),
             material: materials.add(Color::rgb(0.1, 0.2, 0.1).into()),
             ..Default::default()
         })
