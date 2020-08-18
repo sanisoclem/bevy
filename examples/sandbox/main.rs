@@ -48,8 +48,9 @@ fn setup(
             ..Default::default()
         })
         // camera
-        .spawn(top_down::TopDownCamera {
-
-            ..Default::default()
-        });
+        .spawn(top_down::TopDownCamera::create_facing(
+            Vec3::new(-3.0, 5.0, 8.0),
+			Vec3::new(0.0, 0.0, 0.0),
+			Vec3::new(0.0, 1.0, 0.0),
+        ));
 }

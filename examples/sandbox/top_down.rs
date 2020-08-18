@@ -45,13 +45,6 @@ pub struct TopDownCamera {
 
 impl Default for TopDownCamera {
 	fn default() -> Self {
-		let transform = Mat4::face_toward(
-			Vec3::new(-3.0, 5.0, 8.0),
-			Vec3::new(0.0, 0.0, 0.0),
-			Vec3::new(0.0, 1.0, 0.0),
-		);
-		let (scale, rotation, translation) = transform.to_scale_rotation_translation();
-
 		Self {
 			options: TopDownCameraOptions::default(),
 			camera: Camera {
@@ -60,10 +53,25 @@ impl Default for TopDownCamera {
 			},
 			perspective_projection: Default::default(),
 			visible_entities: Default::default(),
+			transform: Transform::default(),
+			translation: Translation::default(),
+			rotation: Rotation::default(),
+			scale: Scale::default(),
+		}
+	}
+}
+
+impl TopDownCamera {
+	pub fn create_facing(eye: Vec3, center: Vec3, up: Vec3) -> Self {
+		let transform = Mat4::face_toward(eye, center, up);
+		let (_scale, rotation, translation) = transform.to_scale_rotation_translation();
+
+		Self {
 			transform: Transform::new(transform),
 			translation: Translation::from(translation),
 			rotation: Rotation::from(rotation),
 			scale: Scale::default(),
+			..Default::default()
 		}
 	}
 }
