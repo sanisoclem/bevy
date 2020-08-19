@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 
 mod top_down;
+mod terrain;
 
 fn main() {
     App::build()
         .add_resource(Msaa { samples: 4 })
         .add_default_plugins()
+        .add_plugin(terrain::TerrainPlugin::default())
         .add_plugin(top_down::TopDownPlugin::default())
         .add_startup_system(setup.system())
         .run();
@@ -54,3 +56,30 @@ fn setup(
 			Vec3::new(0.0, 1.0, 0.0),
         ));
 }
+
+
+// fn cube_mover_system(
+// 	time: Res<Time>,
+// 	mut query: Query<(&TopDownCameraOptions, &mut Translation, &Rotation)>,
+// ) {
+// 	let axis_h = movement_axis(&keyboard_input, KeyCode::D, KeyCode::A);
+// 	let axis_v = movement_axis(&keyboard_input, KeyCode::S, KeyCode::W);
+
+// 	let axis_float =
+// 		movement_axis(&keyboard_input, KeyCode::Space, KeyCode::LShift);
+
+// 	for (options, mut translation, rotation) in &mut query.iter() {
+// 		let delta_f = forward_walk_vector(&rotation) // Vec3::unit_z().normalize()
+// 			* axis_v
+// 			* options.speed
+// 			* time.delta_seconds;
+
+// 		let delta_strafe =
+// 			strafe_vector(rotation) * axis_h * options.speed * time.delta_seconds;
+
+// 		let delta_float =
+// 			Vec3::unit_y() * axis_float * options.speed * time.delta_seconds;
+
+// 		translation.0 += delta_f + delta_strafe + delta_float;
+// 	}
+// }
