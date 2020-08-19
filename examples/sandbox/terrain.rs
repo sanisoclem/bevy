@@ -68,7 +68,7 @@ fn despawn_chunks() {
 }
 
 fn get_chunks_to_load(origin: ChunkIndex, camera_location: Translation) -> Vec<ChunkIndex> {
-
+    todo!()
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Properties)]
