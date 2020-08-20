@@ -1,22 +1,24 @@
 use bevy::prelude::*;
 use bevy::math::Mat2;
+use std::ops::Add;
 
 
 //const pixel2hex: Mat2 = Mat2::from_cols_array(&[3.0f32.sqrt()/3.0, 0.0, -1.0/3.0, 2.0/3.0]);
 
 
 pub trait HexLayout<HexCoord, SpaceCoord> {
-    //type HexCoordIterator: Iterator<Item=HexCoord>;
+    type HexCoordIterator: Iterator<Item=HexCoord>;
 
     // fn distance_step(&self, h1: HexCoord, h2: HexCoord) -> i32;
     // fn distance(&self, h1: HexCoord, h2: HexCoord) ->  f32;
 
     fn hex_to_space(&self, hex: HexCoord) -> SpaceCoord;
     fn space_to_hex(&self, space: SpaceCoord) -> HexCoord;
-    //fn get_neighbors(&self, hex: HexCoord, distance: i32) ->  Self::HexCoordIterator;
-    //fn get_ring(&self, center: HexCoord, distance: i32) ->  Self::HexCoordIterator;
+    fn get_neighbors(&self, hex: HexCoord) ->  Self::HexCoordIterator;
+    fn get_ring(&self, center: HexCoord, distance: i32) ->  Self::HexCoordIterator;
 }
 
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default, Eq, Hash)]
 pub struct CubeHexCoord(pub i32, pub i32, pub i32);
 
 impl CubeHexCoord {
@@ -27,6 +29,14 @@ impl CubeHexCoord {
 impl Into<Vec2> for CubeHexCoord {
     fn into(self) -> Vec2 {
         Vec2::new(self.0 as f32, self.1 as f32)
+    }
+}
+
+impl Add for CubeHexCoord {
+    type Output = Self;
+    #[inline]
+    fn add(self, other: Self) -> Self {
+        Self(self.0 + other.0, self.1 + other.1, self.2 + self.2)
     }
 }
 
@@ -61,27 +71,44 @@ impl CubeHexLayout {
     }
 }
 
+impl Default for CubeHexLayout {
+    fn default() -> Self {
+        CubeHexLayout {
+            space_origin: CubeHexCoord(0,0,0),
+            size: 100.0
+        }
+    }
+}
+
 impl HexLayout<CubeHexCoord, Vec2> for CubeHexLayout {
-    //type HexCoordIterator;
+    type HexCoordIterator = Box<dyn Iterator<Item=CubeHexCoord>>;
 
     fn hex_to_space(&self, hex: CubeHexCoord) -> Vec2 {
         // TODO: calculate when space 0,0 is not hex 0,0
         let hex2pixel = Mat2::from_cols_array(&[3.0f32.sqrt(), 0.0, 3.0f32.sqrt()/2.0, 3.0/2.0]);
-        hex2pixel.mul_vec2(hex.into()) * self.size
+        hex2pixel.mul_vec2((self.space_origin + hex).into()) * self.size
     }
 
     fn space_to_hex(&self, space: Vec2) -> CubeHexCoord {
-        // TODO: calculate when space 0,0 is not hex 0,0
         let space2hex = Mat2::from_cols_array(&[3.0f32.sqrt()/3.0, 0.0, -1.0/3.0, 2.0/3.0]);
         let frac = space2hex.mul_vec2(space) / self.size;
-        self.hex_coord_from_fractional_coord(frac)
+        self.space_origin + self.hex_coord_from_fractional_coord(frac)
     }
 
-    // fn get_neighbors(&self, hex: CubeHexCoord, distance: i32) ->  Self::HexCoordIterator {
-    //     todo!()
-    // }
+    fn get_neighbors(&self, hex: CubeHexCoord) ->  Self::HexCoordIterator {
+        self.get_ring(hex, 1)
+    }
 
-    // fn get_ring(&self, center: CubeHexCoord, distance: i32) ->  Self::HexCoordIterator {
-    //     todo!()
-    // }
+    fn get_ring(&self, center: CubeHexCoord, distance: i32) ->  Self::HexCoordIterator {
+        Box::new((0..=distance).flat_map(move |i| {
+            let indexes = [i, distance-i, -distance];
+            // rotate 6 times
+            (0..6).map(move |rot| {
+                let m = if rot % 2 == 1 { -1 } else { 1 };
+                let xi = (0 + rot) % 3;
+                let yi = (1 + rot) % 3;
+                center + CubeHexCoord::from_axis_coord(indexes[xi] * m , indexes[yi] * m)
+            })
+        }))
+    }
 }

@@ -1,17 +1,20 @@
 use bevy::prelude::*;
-use std::collections::HashSet;
+use std::{hash::Hash, collections::HashSet, fmt::Debug};
 use bevy::render::camera::Camera;
 use bevy_math::Mat2;
+use hex::*;
 
-mod hex;
+pub mod hex;
 
 pub struct TerrainPlugin;
 
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.init_resource::<TerrainRegistry>()
+        app.init_resource::<hex::CubeHexLayout>()
+            .init_resource::<TerrainRegistry<CubeHexCoord>>()
             .init_resource::<TerrainOptions>()
-            .add_system(spawn_chunks.system());
+            .add_system(spawn_chunks.system())
+            .add_system(load_chunks.system());
     }
 }
 
@@ -36,11 +39,11 @@ impl Default for TerrainOptions {
 	}
 }
 
-pub struct TerrainRegistry {
-    pub loaded_chunks: HashSet<(i32, i32)>,
-    pub chunks_to_load: HashSet<(i32, i32)>,
+pub struct TerrainRegistry<T> where T: Hash + Eq {
+    pub loaded_chunks: HashSet<T>,
+    pub chunks_to_load: HashSet<T>,
 }
-impl Default for TerrainRegistry {
+impl<T> Default for TerrainRegistry<T> where T: Hash + Eq {
     fn default() -> Self {
         TerrainRegistry{
             loaded_chunks: HashSet::new(),
@@ -48,61 +51,74 @@ impl Default for TerrainRegistry {
         }
     }
 }
+impl<T> TerrainRegistry<T> where T: Hash + Eq + Debug {
+    pub fn queue_load(&mut self, chunk: T) {
+        if !self.loaded_chunks.contains(&chunk) && !self.chunks_to_load.contains(&chunk) {
+            println!("Loading chunk {:?}", chunk);
+            self.chunks_to_load.insert(chunk);
+        }
+    }
+    pub fn queue_load_all(&mut self, chunks: impl Iterator<Item=T>) {
+        for chunk in chunks {
+            self.queue_load(chunk)
+        }
+    }
+    pub fn mark_loaded(&mut self, chunk: T) {
+        self.loaded_chunks.insert(chunk);
+    }
+    pub fn mark_loaded_all(&mut self, chunks: impl Iterator<Item=T>) {
+        self.loaded_chunks.extend(chunks)
+    }
+}
 
 fn spawn_chunks(
-    mut commands: Commands,
-    options: Res<TerrainOptions>,
-    mut terrain_registry: ResMut<TerrainRegistry>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    hex_layout: Res<CubeHexLayout>,
+    mut terrain_registry: ResMut<TerrainRegistry<CubeHexCoord>>,
     mut query: Query<(&Translation, &ChunkSite)>,
 ) {
-    let pixel2hex = Mat2::from_cols_array(&[3.0f32.sqrt()/3.0, 0.0, -1.0/3.0, 2.0/3.0]);
     // load chunks around cameras
-    for (translation, site) in &mut query.iter() {
-        // // find which chunk we're currently on
-        // let pos = Vec2::from_slice_unaligned(&[translation.x(), translation.y()]);
-        // let qr = pixel2hex.mul_vec2(pos) / size;
+    for (translation, _site) in &mut query.iter() {
+        // find which chunk we're currently on
+        let current_chunk = hex_layout.space_to_hex(Vec2::new(translation.x(), translation.y()));
+        // find neighboring chunks
+        let neighbors = hex_layout.get_neighbors(current_chunk);
 
-        // for d in 0..site.load_distance {
-        //     for i in 0..=d {
-        //         let indexes = [i, d-i, -d];
-        //         // rotate 6 times
-        //         for a in 0..6 {
-        //             let m = if a % 2 == 1 { -1.0 } else { 1.0 };
-        //             let xi = (0 + a) % 3;
-        //             let yi = (1 + a) % 3;
-        //             let qr = Vec2::new(indexes[xi] as f32 * m , indexes[yi] as f32 * m);
-
-        //             println!("Spawning {}", qr);
-        //             let pos = hex2pixel.mul_vec2(qr) * size;
-        //             commands
-        //             .spawn(SpriteComponents {
-        //                 material: materials.add(Color::rgb(0.2, 0.2, 0.8).into()),
-        //                 sprite: Sprite { size: Vec2::from_slice_unaligned(&[10.0, 10.0]) },
-        //                 translation: Translation::new(pos.x(), pos.y(), 1.0),
-        //                 ..Default::default()
-        //             });
-        //         }
-        //     }
-        // }
-
-
-        // // create list of chunks that has to be loaded
-        // print!("{:?}", qr);
-        // print!("{:?}, {:?}", q, r);
+        // load chunks
+        terrain_registry.queue_load(current_chunk);
+        terrain_registry.queue_load_all(neighbors);
     }
-    // determine which chunks needs to be spawned
+
     // create entities for chunks
 }
 
-fn load_chunks() {
+fn load_chunks(
+    mut commands: Commands,
+    hex_layout: Res<CubeHexLayout>,
+    mut terrain_registry: ResMut<TerrainRegistry<CubeHexCoord>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
     // enumerate chunks that needs to be loaded
-    // check if there is any persisted chunk state
-    // if yes, load from disk
-    // if no, procedurally generate chunk
-    // loading a chunk might need multiple cycles
-    // once completely loaded, mark the chunk as loaded
+    let loaded: Vec<_>=
+        terrain_registry
+        .chunks_to_load.drain().map(|chunk| {
+        // TODO: check if there is any persisted chunk state
+        // TODO: if yes, load from disk
+        // if no, procedurally generate chunk
+        // loading a chunk might need multiple cycles
+        // once completely loaded, mark the chunk as loaded
+
+        let pos = hex_layout.hex_to_space(chunk);
+        commands
+        .spawn(SpriteComponents {
+            material: materials.add(Color::rgb(0.8, 0.2, 0.2).into()),
+            sprite: Sprite { size: Vec2::from_slice_unaligned(&[50.0, 50.0]) },
+            translation: Translation::new(pos.x(), pos.y(), 1.0),
+            ..Default::default()
+        });
+        chunk
+    }).collect();
+
+    terrain_registry.mark_loaded_all(loaded.into_iter());
 }
 
 fn unload_chunks() {
