@@ -77,7 +77,7 @@ fn spawn_chunks(
     // load chunks around cameras
     for (translation, _site) in &mut query.iter() {
         // find which chunk we're currently on
-        let current_chunk = hex_layout.space_to_hex(Vec2::new(translation.x(), translation.y()));
+        let current_chunk = hex_layout.space_to_hex(Vec2::new(translation.x(), translation.z()));
         // find neighboring chunks
         let neighbors = hex_layout.get_neighbors(current_chunk);
 
@@ -90,7 +90,7 @@ fn spawn_chunks(
 }
 
 fn chunk_to_mesh(layout: &Res<CubeHexLayout>, chunk: CubeHexCoord) -> Mesh {
-    let mut mesh = Mesh::new(PrimitiveTopology::LineList);
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
     let start = Vec2::new(0.0, 1.0);
     let numVerts = 6;
 
@@ -125,6 +125,7 @@ fn chunk_to_mesh(layout: &Res<CubeHexLayout>, chunk: CubeHexCoord) -> Mesh {
 
     // indices
     mesh.indices = Some(vec![0,1,1,2,2,3,3,4,4,5,5,0]);
+    //mesh.indices = Some(vec![5,0,1,2,3,4,5,2,3,3]);
     mesh
 }
 
