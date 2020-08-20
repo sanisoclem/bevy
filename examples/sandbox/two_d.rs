@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_math::Mat2;
 use crate::terrain::ChunkSite;
 
 pub struct TwoDPlugin;
@@ -22,31 +23,32 @@ fn setup2d(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    // Add bricks
-    let brick_rows = 4;
-    let brick_columns = 5;
-    let brick_spacing = 20.0;
-    let brick_size = Vec2::new(150.0, 30.0);
-    let bricks_width = brick_columns as f32 * (brick_size.x() + brick_spacing) - brick_spacing;
-    // center the bricks and move them up a bit
-    let bricks_offset = Vec3::new(-(bricks_width - brick_size.x()) / 2.0, 100.0, 0.0);
+    // Add hexes
+    let hex_distance = 5;
+    let size = 100.0;
+    let hex2pixel = Mat2::from_cols_array(&[3.0f32.sqrt(), 0.0, 3.0f32.sqrt()/2.0, 3.0/2.0]);
 
-    for row in 0..brick_rows {
-        let y_position = row as f32 * (brick_size.y() + brick_spacing);
-        for column in 0..brick_columns {
-            let brick_position = Vec3::new(
-                column as f32 * (brick_size.x() + brick_spacing),
-                y_position,
-                0.0,
-            ) + bricks_offset;
-            commands
-                // brick
+    for d in 0..=hex_distance {
+        println!("ring: {}", d);
+        for i in 0..=d {
+            let indexes = [i, d-i, -d];
+            // rotate 6 times
+            for a in 0..6 {
+                let m = if a % 2 == 1 { -1.0 } else { 1.0 };
+                let xi = (0 + a) % 3;
+                let yi = (1 + a) % 3;
+                let qr = Vec2::new(indexes[xi] as f32 * m , indexes[yi] as f32 * m);
+
+                println!("Spawning {}", qr);
+                let pos = hex2pixel.mul_vec2(qr) * size;
+                commands
                 .spawn(SpriteComponents {
                     material: materials.add(Color::rgb(0.2, 0.2, 0.8).into()),
-                    sprite: Sprite { size: brick_size },
-                    translation: Translation(brick_position),
+                    sprite: Sprite { size: Vec2::from_slice_unaligned(&[10.0, 10.0]) },
+                    translation: Translation::new(pos.x(), pos.y(), 1.0),
                     ..Default::default()
                 });
+            }
         }
     }
 
@@ -54,6 +56,7 @@ fn setup2d(
     commands
         .spawn(SpriteComponents {
             material: materials.add(texture_handle.into()),
+            translation: Translation::new(0.0, 0.0,0.0),
             ..Default::default()
         })
         .with(ChunkSite::default())
@@ -86,7 +89,7 @@ fn sprite_movement (
             direction_y -= 1.0;
         }
 
-        *translation.0.x_mut() += time.delta_seconds * direction_x * 150.0;
-        *translation.0.y_mut() += time.delta_seconds * direction_y * 150.0;
+        *translation.0.x_mut() += time.delta_seconds * direction_x * 550.0;
+        *translation.0.y_mut() += time.delta_seconds * direction_y * 550.0;
     }
 }

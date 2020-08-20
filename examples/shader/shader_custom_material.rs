@@ -43,8 +43,20 @@ layout(location = 0) out vec4 o_Target;
 layout(set = 1, binding = 1) uniform MyMaterial_color {
     vec4 color;
 };
-void main() {
-    o_Target = color;
+
+// 1 on edges, 0 in middle
+float hex(vec2 p) {
+  p.x *= 0.57735*2.0;
+	p.y += mod(floor(p.x), 2.0)*0.5;
+	p = abs((mod(p, 1.0) - 0.5));
+	return abs(max(p.x*1.5 + p.y, p.y*2.0) - 1.0);
+}
+
+void main(void) {
+	vec2 pos = gl_FragCoord.xy;
+	vec2 p = pos/20.0;
+	float  r = (1.0 -0.7)*0.5;
+	o_Target = vec4(smoothstep(0.0, r + 0.05, hex(p)));
 }
 "#;
 
