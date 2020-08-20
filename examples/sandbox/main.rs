@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 mod top_down;
 mod terrain;
+mod two_d;
 
 fn main() {
     App::build()
@@ -9,12 +10,13 @@ fn main() {
         .add_default_plugins()
         .add_plugin(terrain::TerrainPlugin::default())
         .add_plugin(top_down::TopDownPlugin::default())
-        .add_startup_system(setup.system())
+        .add_plugin(two_d::TwoDPlugin::default())
         .run();
 }
 
-/// set up a simple 3D scene
-fn setup(
+
+
+fn setup3d(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -56,30 +58,3 @@ fn setup(
 			Vec3::new(0.0, 1.0, 0.0),
         ));
 }
-
-
-// fn cube_mover_system(
-// 	time: Res<Time>,
-// 	mut query: Query<(&TopDownCameraOptions, &mut Translation, &Rotation)>,
-// ) {
-// 	let axis_h = movement_axis(&keyboard_input, KeyCode::D, KeyCode::A);
-// 	let axis_v = movement_axis(&keyboard_input, KeyCode::S, KeyCode::W);
-
-// 	let axis_float =
-// 		movement_axis(&keyboard_input, KeyCode::Space, KeyCode::LShift);
-
-// 	for (options, mut translation, rotation) in &mut query.iter() {
-// 		let delta_f = forward_walk_vector(&rotation) // Vec3::unit_z().normalize()
-// 			* axis_v
-// 			* options.speed
-// 			* time.delta_seconds;
-
-// 		let delta_strafe =
-// 			strafe_vector(rotation) * axis_h * options.speed * time.delta_seconds;
-
-// 		let delta_float =
-// 			Vec3::unit_y() * axis_float * options.speed * time.delta_seconds;
-
-// 		translation.0 += delta_f + delta_strafe + delta_float;
-// 	}
-// }

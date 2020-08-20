@@ -37,7 +37,7 @@ fn spawn_chunks(
     options: Res<TerrainOptions>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut query: Query<(&Transform, &Camera)>,
+    mut query: Query<(&Transform, &ChunkSite)>,
 ) {
     // load chunks around cameras
     for (transform, camera) in &mut query.iter() {
@@ -67,7 +67,15 @@ fn despawn_chunks() {
     // despawn chunks
 }
 
-fn get_chunks_to_load(origin: ChunkIndex, camera_location: Translation) -> Vec<ChunkIndex> {
+trait ChunkLayout {
+    fn get_chunk_index_from_translation(&self, origin: ChunkIndex, translation: Translation);
+}
+
+fn get_chunks_to_load(origin: ChunkIndex, camera_location: Translation, options: TerrainOptions) -> Vec<ChunkIndex> {
+    // let chunk_size = options.chunk_size as f32 * options.voxel_size;
+    // let half_chunk_size = chunk_size / 2.;
+    // let lon = ((translation.x + half_chunk_size) / chunk_size).floor() as i32;
+    // let lat = ((translation.z + half_chunk_size) / chunk_size).floor() as i32;
     todo!()
 }
 
@@ -77,6 +85,18 @@ pub struct ChunkIndex(pub i32, pub i32);
 impl Default for ChunkIndex {
     fn default() -> Self {
         ChunkIndex(0, 0)
+    }
+}
+
+pub struct ChunkSite {
+    pub load_distance: i32
+}
+
+impl Default for ChunkSite {
+    fn default() -> Self {
+        ChunkSite {
+            load_distance: 1
+        }
     }
 }
 
