@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use terrain::ChunkSite;
 
 mod top_down;
 mod terrain;
@@ -10,7 +11,8 @@ fn main() {
         .add_default_plugins()
         .add_plugin(terrain::TerrainPlugin::default())
         .add_plugin(top_down::TopDownPlugin::default())
-        .add_plugin(two_d::TwoDPlugin::default())
+        //.add_plugin(two_d::TwoDPlugin::default())
+        .add_startup_system(setup3d.system())
         .run();
 }
 
@@ -24,11 +26,11 @@ fn setup3d(
     // add entities to the world
     commands
         // plane
-        .spawn(PbrComponents {
-            mesh: meshes.add(Mesh::from(shape::Plane { size: 100.0 })),
-            material: materials.add(Color::rgb(0.1, 0.2, 0.1).into()),
-            ..Default::default()
-        })
+        // .spawn(PbrComponents {
+        //     mesh: meshes.add(Mesh::from(shape::Plane { size: 100.0 })),
+        //     material: materials.add(Color::rgb(0.1, 0.2, 0.1).into()),
+        //     ..Default::default()
+        // })
         // cube
         .spawn(PbrComponents {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
@@ -56,5 +58,5 @@ fn setup3d(
             Vec3::new(-3.0, 5.0, 8.0),
 			Vec3::new(0.0, 0.0, 0.0),
 			Vec3::new(0.0, 1.0, 0.0),
-        ));
+        )).with(ChunkSite::default());
 }

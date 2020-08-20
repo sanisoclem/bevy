@@ -3,6 +3,7 @@ use std::{hash::Hash, collections::HashSet, fmt::Debug};
 use bevy::render::camera::Camera;
 use bevy_math::Mat2;
 use hex::*;
+use bevy_render::{mesh::{VertexAttributeValues, VertexAttribute}, pipeline::PrimitiveTopology};
 
 pub mod hex;
 
@@ -27,14 +28,14 @@ impl Default for TerrainPlugin {
 pub struct TerrainOptions {
     pub chunk_size: i32,
     pub voxel_size: f32,
-    pub origin: ChunkIndex,
+    pub origin: CubeHexCoord,
 }
 impl Default for TerrainOptions {
 	fn default() -> Self {
 		Self {
             chunk_size: 32,
             voxel_size: 32.0,
-            origin: ChunkIndex::default()
+            origin: CubeHexCoord::default()
 		}
 	}
 }
@@ -63,9 +64,6 @@ impl<T> TerrainRegistry<T> where T: Hash + Eq + Debug {
             self.queue_load(chunk)
         }
     }
-    pub fn mark_loaded(&mut self, chunk: T) {
-        self.loaded_chunks.insert(chunk);
-    }
     pub fn mark_loaded_all(&mut self, chunks: impl Iterator<Item=T>) {
         self.loaded_chunks.extend(chunks)
     }
@@ -91,11 +89,52 @@ fn spawn_chunks(
     // create entities for chunks
 }
 
+fn chunk_to_mesh(layout: &Res<CubeHexLayout>, chunk: CubeHexCoord) -> Mesh {
+    let mut mesh = Mesh::new(PrimitiveTopology::LineList);
+    let start = Vec2::new(0.0, 1.0);
+    let numVerts = 6;
+
+    // compute vertices
+    let vertices=
+        (0..numVerts).map(|rot| (rot as f32 * 60.0).to_radians())
+        .map(|rot| Mat2::from_cols_array(&[rot.to_radians().cos(), rot.sin(), -rot.sin(), rot.cos()]).mul_vec2(start)*layout.size)
+        .map(|v2| [v2.x(), 0.0, v2.y()]);
+
+    mesh.attributes.push(VertexAttribute {
+        name: "Vertex_Position".into(),
+        values: VertexAttributeValues::Float3(vertices.collect()),
+    });
+
+    // compute normals
+    let normals=
+        (0..numVerts).map(|_| Vec3::unit_y().normalize().into());
+
+    mesh.attributes.push(VertexAttribute {
+        name: "Vertex_Normal".into(),
+        values: VertexAttributeValues::Float3(normals.collect()),
+    });
+
+     // compute UVs
+     let uvs=
+     (0..numVerts).map(|_| [0.0, 0.0]);
+
+    mesh.attributes.push(VertexAttribute {
+        name: "Vertex_Uv".into(),
+        values: VertexAttributeValues::Float2(uvs.collect()),
+    });
+
+    // indices
+    mesh.indices = Some(vec![0,1,1,2,2,3,3,4,4,5,5,0]);
+    mesh
+}
+
 fn load_chunks(
     mut commands: Commands,
     hex_layout: Res<CubeHexLayout>,
     mut terrain_registry: ResMut<TerrainRegistry<CubeHexCoord>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    // mut materials: ResMut<Assets<ColorMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // enumerate chunks that needs to be loaded
     let loaded: Vec<_>=
@@ -108,11 +147,18 @@ fn load_chunks(
         // once completely loaded, mark the chunk as loaded
 
         let pos = hex_layout.hex_to_space(chunk);
-        commands
-        .spawn(SpriteComponents {
-            material: materials.add(Color::rgb(0.8, 0.2, 0.2).into()),
-            sprite: Sprite { size: Vec2::from_slice_unaligned(&[50.0, 50.0]) },
-            translation: Translation::new(pos.x(), pos.y(), 1.0),
+        // commands
+        // .spawn(SpriteComponents {
+        //     material: materials.add(Color::rgb(0.8, 0.2, 0.2).into()),
+        //     sprite: Sprite { size: Vec2::from_slice_unaligned(&[50.0, 50.0]) },
+        //     translation: Translation::new(pos.x(), pos.y(), 1.0),
+        //     ..Default::default()
+        // });
+
+        commands.spawn(PbrComponents {
+            mesh: meshes.add(chunk_to_mesh(&hex_layout, chunk) ),
+            material: materials.add(Color::rgb(0.1, 0.2, 0.1).into()),
+            translation: Translation::new(pos.x(), 0.0, pos.y()),
             ..Default::default()
         });
         chunk
@@ -132,27 +178,6 @@ fn despawn_chunks() {
     // despawn chunks
 }
 
-trait ChunkLayout {
-    fn get_chunk_index_from_translation(&self, origin: ChunkIndex, translation: Translation);
-}
-
-fn get_chunks_to_load(origin: ChunkIndex, camera_location: Translation, options: TerrainOptions) -> Vec<ChunkIndex> {
-    // let chunk_size = options.chunk_size as f32 * options.voxel_size;
-    // let half_chunk_size = chunk_size / 2.;
-    // let lon = ((translation.x + half_chunk_size) / chunk_size).floor() as i32;
-    // let lat = ((translation.z + half_chunk_size) / chunk_size).floor() as i32;
-    todo!()
-}
-
-#[derive(Debug, PartialEq, Copy, Clone, Properties)]
-pub struct ChunkIndex(pub i32, pub i32);
-
-impl Default for ChunkIndex {
-    fn default() -> Self {
-        ChunkIndex(0, 0)
-    }
-}
-
 pub struct ChunkSite {
     pub load_distance: i32
 }
@@ -163,10 +188,4 @@ impl Default for ChunkSite {
             load_distance: 1
         }
     }
-}
-
-#[derive(Bundle)]
-pub struct TerrainChunkComponents {
-    pub pbr: PbrComponents,
-    pub chunk_index: ChunkIndex,
 }

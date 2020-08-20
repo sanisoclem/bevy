@@ -41,8 +41,8 @@ impl Add for CubeHexCoord {
 }
 
 pub struct CubeHexLayout {
-    space_origin: CubeHexCoord,
-    size: f32
+    pub space_origin: CubeHexCoord,
+    pub size: f32
 }
 impl CubeHexLayout {
     pub fn hex_coord_from_fractional_coord(&self, frac: Vec2) -> CubeHexCoord {
@@ -75,7 +75,7 @@ impl Default for CubeHexLayout {
     fn default() -> Self {
         CubeHexLayout {
             space_origin: CubeHexCoord(0,0,0),
-            size: 100.0
+            size: 10.0
         }
     }
 }
