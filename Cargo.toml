@@ -60,6 +60,7 @@ bevy_wgpu = { path = "crates/bevy_wgpu", optional = true, version = "0.1" }
 bevy_winit = { path = "crates/bevy_winit", optional = true, version = "0.1" }
 
 [dev-dependencies]
+noise = "0.6.0"
 rand = "0.7.2"
 serde = { version = "1", features = ["derive"]}
 

@@ -38,6 +38,10 @@ fn setup3d(
             translation: Translation::new(0.0, 1.0, 0.0),
             ..Default::default()
         })
+        .spawn(LightComponents {
+            translation: Translation::new(4.0, 8.0, 4.0),
+            ..Default::default()
+        })
         // sphere
         .spawn(PbrComponents {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
@@ -45,18 +49,18 @@ fn setup3d(
                 radius: 0.5,
             })),
             material: materials.add(Color::rgb(0.1, 0.4, 0.8).into()),
-            translation: Translation::new(1.5, 1.5, 1.5),
+            translation: Translation::new(0.0, 2.0, 0.0),
             ..Default::default()
         })
-        // light
-        .spawn(LightComponents {
-            translation: Translation::new(4.0, 8.0, 4.0),
-            ..Default::default()
-        })
-        // camera
-        .spawn(top_down::TopDownCamera::create_facing(
-            Vec3::new(-3.0, 5.0, 8.0),
-			Vec3::new(0.0, 0.0, 0.0),
-			Vec3::new(0.0, 1.0, 0.0),
-        )).with(ChunkSite::default());
+        .with(top_down::TopDownCameraOptions::default())
+        .with(ChunkSite::default())
+        .with_children(|parent| {
+            parent
+            // camera
+            .spawn(top_down::TopDownCamera::create_facing(
+                Vec3::new(0.0, 5.0, 8.0),
+                Vec3::new(0.0, 2.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
+            ));
+        });
 }

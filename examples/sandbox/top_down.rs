@@ -110,7 +110,7 @@ fn movement_axis(
 fn camera_movement_system(
 	time: Res<Time>,
 	keyboard_input: Res<Input<KeyCode>>,
-	mut query: Query<(&TopDownCameraOptions, &mut Translation, &Rotation)>,
+	mut query: Query<(&TopDownCameraOptions, &crate::terrain::ChunkSite, &mut Translation, &Rotation)>,
 ) {
 	let axis_h = movement_axis(&keyboard_input, KeyCode::D, KeyCode::A);
 	let axis_v = movement_axis(&keyboard_input, KeyCode::S, KeyCode::W);
@@ -118,7 +118,7 @@ fn camera_movement_system(
 	let axis_float =
 		movement_axis(&keyboard_input, KeyCode::Space, KeyCode::LShift);
 
-	for (options, mut translation, rotation) in &mut query.iter() {
+	for (options, _chunk_site,  mut translation, rotation) in &mut query.iter() {
 		let delta_f = forward_walk_vector(&rotation) // Vec3::unit_z().normalize()
 			* axis_v
 			* options.speed
