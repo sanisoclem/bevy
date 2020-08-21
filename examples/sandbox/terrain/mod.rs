@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use std::{time::Instant, hash::Hash, collections::HashSet, fmt::Debug};
 use hex::*;
 use mesh::*;
 use noise::*;
+use std::{collections::HashSet, fmt::Debug, hash::Hash, time::Instant};
 
 pub mod hex;
 mod mesh;
@@ -15,7 +15,7 @@ impl Plugin for TerrainPlugin {
             .init_resource::<ChunkTracker<CubeHexCoord>>()
             .init_resource::<ChunkGenerator>()
             .init_resource::<TerrainOptions>()
-            .add_startup_system(setup.system())
+            .add_startup_system(setup_chunk_tracker.system())
             .add_system(chunk_spawner.system())
             .add_system(chunk_shaper.system())
             .add_system(load_chunks.system());
@@ -34,36 +34,47 @@ pub struct TerrainOptions {
     pub origin: CubeHexCoord,
 }
 impl Default for TerrainOptions {
-	fn default() -> Self {
-		Self {
+    fn default() -> Self {
+        Self {
             chunk_size: 32,
             voxel_size: 32.0,
-            origin: CubeHexCoord::default()
-		}
-	}
+            origin: CubeHexCoord::default(),
+        }
+    }
 }
 
-pub struct ChunkTracker<ChunkAddress> where ChunkAddress: Hash + Eq {
+pub struct ChunkTracker<ChunkAddress>
+where
+    ChunkAddress: Hash + Eq,
+{
     pub loaded_chunks: HashSet<ChunkAddress>,
     pub placeholder_mesh: Option<Handle<Mesh>>,
     pub placeholder_material: Option<Handle<StandardMaterial>>,
 }
-impl<ChunkAddress> Default for ChunkTracker<ChunkAddress> where ChunkAddress: Hash + Eq {
+impl<ChunkAddress> Default for ChunkTracker<ChunkAddress>
+where
+    ChunkAddress: Hash + Eq,
+{
     fn default() -> Self {
-        ChunkTracker{
+        ChunkTracker {
             loaded_chunks: HashSet::new(),
             placeholder_material: None,
             placeholder_mesh: None,
         }
     }
 }
-impl<ChunkAddress> ChunkTracker<ChunkAddress> where ChunkAddress: Hash + Eq + Debug {
+impl<ChunkAddress> ChunkTracker<ChunkAddress>
+where
+    ChunkAddress: Hash + Eq + Debug,
+{
     pub fn try_spawn(&mut self, chunk: ChunkAddress) -> bool {
         if !self.loaded_chunks.contains(&chunk) {
             //println!("spawn chunk {:?}", chunk);
             self.loaded_chunks.insert(chunk);
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 }
 
@@ -78,23 +89,27 @@ impl Default for ChunkGenerator {
     fn default() -> Self {
         ChunkGenerator {
             generator: Perlin::new().set_seed(20),
-            scale:  1.0,
+            scale: 1.0,
             bias: 0.0,
-            uscale: 1.0,
-            vscale: 1.0,
+            uscale: 0.07,
+            vscale: 0.07,
         }
     }
 }
 
-
-fn setup(
+fn setup_chunk_tracker(
     hex_layout: Res<CubeHexLayout>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut chunk_tracker: ResMut<ChunkTracker<CubeHexCoord>>,
 ) {
     chunk_tracker.placeholder_material = Some(materials.add(Color::rgb(0.1, 0.2, 0.1).into()));
-    chunk_tracker.placeholder_mesh = Some(meshes.add(mesh_hex_outline(Vec3::default(), Vec3::unit_y(), Vec3::unit_x(), hex_layout.size)));
+    chunk_tracker.placeholder_mesh = Some(meshes.add(mesh_hex_outline(
+        Vec3::default(),
+        Vec3::unit_y(),
+        Vec3::unit_x(),
+        hex_layout.size,
+    )));
 }
 
 fn chunk_spawner(
@@ -111,29 +126,30 @@ fn chunk_spawner(
 
         // skip this site if it hasn't moved chunks since the last load
         if let Some(last_loaded) = site.last_loaded_chunk {
-            if  last_loaded == current_chunk  {
+            if last_loaded == current_chunk {
                 continue;
             }
         }
         //println!("checking for chunks to spawn");
 
         // find neighboring chunks
-        let neighbors = hex_layout.get_neighbors(current_chunk,50);
+        let neighbors = hex_layout.get_neighbors(current_chunk, 50);
 
         // spawn chunks
         for chunk in std::iter::once(current_chunk).chain(neighbors) {
             if chunk_tracker.try_spawn(chunk) {
                 let pos = hex_layout.hex_to_space(chunk);
-                commands.spawn(PbrComponents {
-                    mesh: chunk_tracker.placeholder_mesh.unwrap(),
-                    material: chunk_tracker.placeholder_material.unwrap(),
-                    translation: Translation::new(pos.x(), 0.0, pos.y()),
-                    ..Default::default()
-                })
-                .with_bundle(ChunkComponents {
-                    chunk_index: chunk,
-                    chunk_info: ChunkComponent::new(0.0, time.instant.unwrap())
-                });
+                commands
+                    .spawn(PbrComponents {
+                        mesh: chunk_tracker.placeholder_mesh.unwrap(),
+                        material: chunk_tracker.placeholder_material.unwrap(),
+                        translation: Translation::new(pos.x(), 0.0, pos.y()),
+                        ..Default::default()
+                    })
+                    .with_bundle(ChunkComponents {
+                        chunk_index: chunk,
+                        chunk_info: ChunkComponent::new(0.0, time.instant.unwrap()),
+                    });
             }
         }
 
@@ -149,27 +165,29 @@ fn chunk_shaper(
     mut query: Query<(&CubeHexCoord, &mut ChunkComponent)>,
 ) {
     if keyboard_input.pressed(KeyCode::Up) {
-        generator.bias += 0.01;
+        generator.bias += 0.1;
     }
 
     if keyboard_input.pressed(KeyCode::Down) {
-        generator.bias -= 0.01;
+        generator.bias -= 0.1;
     }
 
     if keyboard_input.pressed(KeyCode::Left) {
-        generator.scale -= 0.01;
+        generator.scale -= 0.1;
     }
 
     if keyboard_input.pressed(KeyCode::Right) {
-        generator.scale += 0.01;
+        generator.scale += 0.1;
     }
 
     if keyboard_input.pressed(KeyCode::Numpad8) {
         generator.uscale += 0.01;
+        generator.vscale += 0.01;
     }
 
     if keyboard_input.pressed(KeyCode::Numpad2) {
         generator.uscale -= 0.01;
+        generator.vscale -= 0.01;
     }
 
     if keyboard_input.pressed(KeyCode::Numpad4) {
@@ -182,8 +200,15 @@ fn chunk_shaper(
         generator.vscale += 0.1;
     }
 
-    let sp = ScalePoint::new(&generator.generator).set_all_scales(generator.uscale, generator.vscale, 0.0, 0.0);
-    let noise_gen = ScaleBias::new(&sp).set_bias(generator.bias).set_scale(generator.scale);
+    let sp = ScalePoint::new(&generator.generator).set_all_scales(
+        generator.uscale,
+        generator.vscale,
+        0.0,
+        0.0,
+    );
+    let noise_gen = ScaleBias::new(&sp)
+        .set_bias(generator.bias)
+        .set_scale(generator.scale);
     for (coord, mut chunk) in &mut query.iter() {
         // find which chunk we're currently on
         let biome = noise_gen.get([coord.0 as f64, coord.1 as f64]);
@@ -192,7 +217,6 @@ fn chunk_shaper(
             chunk.chunk_loaded = false;
         }
     }
-
 }
 
 fn load_chunks(
@@ -215,7 +239,13 @@ fn load_chunks(
         // loading a chunk might need multiple cycles
         // once completely loaded, mark the chunk as loaded
 
-        let new_mesh = mesh_hex_voxel(Vec3::new(0.0,chunk_info.biome as f32, 0.0), Vec3::new(0.0,(chunk_info.biome - 5.0) as f32, 0.0), Vec3::unit_y(), Vec3::unit_x(), hex_layout.size);
+        let new_mesh = mesh_hex_voxel(
+            Vec3::new(0.0, chunk_info.biome as f32, 0.0),
+            Vec3::new(0.0, (chunk_info.biome - 5.0) as f32, 0.0),
+            Vec3::unit_y(),
+            Vec3::unit_x(),
+            hex_layout.size,
+        );
         if mesh.id == chunk_tracker.placeholder_mesh.unwrap().id {
             *mesh = meshes.add(new_mesh);
         } else {
@@ -240,7 +270,7 @@ fn despawn_chunks() {
 
 #[derive(Default, Debug)]
 pub struct ChunkSite {
-    pub last_loaded_chunk: Option<CubeHexCoord>
+    pub last_loaded_chunk: Option<CubeHexCoord>,
 }
 
 #[derive(Debug)]
@@ -255,7 +285,7 @@ impl ChunkComponent {
         ChunkComponent {
             chunk_loaded: false,
             created: time,
-            biome: biome,
+            biome,
         }
     }
 }
@@ -265,4 +295,3 @@ pub struct ChunkComponents {
     pub chunk_index: CubeHexCoord,
     pub chunk_info: ChunkComponent,
 }
-

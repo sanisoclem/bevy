@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use terrain::ChunkSite;
 
-mod top_down;
+mod debug;
 mod terrain;
+mod top_down;
 mod two_d;
 
 fn main() {
@@ -11,12 +12,11 @@ fn main() {
         .add_default_plugins()
         .add_plugin(terrain::TerrainPlugin::default())
         .add_plugin(top_down::TopDownPlugin::default())
+        .add_plugin(debug::DebugPlugin::default())
         //.add_plugin(two_d::TwoDPlugin::default())
         .add_startup_system(setup3d.system())
         .run();
 }
-
-
 
 fn setup3d(
     mut commands: Commands,
@@ -56,11 +56,11 @@ fn setup3d(
         .with(ChunkSite::default())
         .with_children(|parent| {
             parent
-            // camera
-            .spawn(top_down::TopDownCamera::create_facing(
-                Vec3::new(0.0, 5.0, 8.0),
-                Vec3::new(0.0, 2.0, 0.0),
-                Vec3::new(0.0, 1.0, 0.0),
-            ));
+                // camera
+                .spawn(top_down::TopDownCamera::create_facing(
+                    Vec3::new(0.0, 5.0, 8.0),
+                    Vec3::new(0.0, 2.0, 0.0),
+                    Vec3::new(0.0, 1.0, 0.0),
+                ));
         });
 }

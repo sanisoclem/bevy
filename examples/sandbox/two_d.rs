@@ -1,6 +1,9 @@
+use crate::terrain::{
+    hex::{CubeHexCoord, CubeHexLayout, HexLayout},
+    ChunkSite,
+};
 use bevy::prelude::*;
 use bevy_math::Mat2;
-use crate::terrain::{ChunkSite, hex::{CubeHexLayout,HexLayout,CubeHexCoord}};
 
 pub struct TwoDPlugin;
 
@@ -16,7 +19,6 @@ impl Default for TwoDPlugin {
         TwoDPlugin
     }
 }
-
 
 fn setup2d(
     mut commands: Commands,
@@ -34,10 +36,11 @@ fn setup2d(
         for hex in hex_layout.get_ring(center, d) {
             println!("Spawning {:?}", hex);
             let pos = hex_layout.hex_to_space(hex);
-            commands
-            .spawn(SpriteComponents {
-                material: material,
-                sprite: Sprite { size: Vec2::from_slice_unaligned(&[10.0, 10.0]) },
+            commands.spawn(SpriteComponents {
+                material,
+                sprite: Sprite {
+                    size: Vec2::from_slice_unaligned(&[10.0, 10.0]),
+                },
                 translation: Translation::new(pos.x(), pos.y(), 1.0),
                 ..Default::default()
             });
@@ -48,7 +51,7 @@ fn setup2d(
     commands
         .spawn(SpriteComponents {
             material: materials.add(texture_handle.into()),
-            translation: Translation::new(0.0, 0.0,0.0),
+            translation: Translation::new(0.0, 0.0, 0.0),
             ..Default::default()
         })
         .with(ChunkSite::default())
@@ -57,12 +60,12 @@ fn setup2d(
         });
 }
 
-fn sprite_movement (
-	time: Res<Time>,
-	keyboard_input: Res<Input<KeyCode>>,
-	mut query: Query<(&mut Translation, &ChunkSite)>,
+fn sprite_movement(
+    time: Res<Time>,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<(&mut Translation, &ChunkSite)>,
 ) {
-	for (mut translation, _site) in &mut query.iter() {
+    for (mut translation, _site) in &mut query.iter() {
         let mut direction_x = 0.0;
         let mut direction_y = 0.0;
         if keyboard_input.pressed(KeyCode::A) {
