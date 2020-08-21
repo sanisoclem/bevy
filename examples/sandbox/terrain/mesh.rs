@@ -134,7 +134,7 @@ pub fn mesh_hex_voxel(top: Vec3, bottom: Vec3, normal: Vec3, up: Vec3, size: f32
     // compute normals
     mesh.attributes.push(VertexAttribute {
         name: "Vertex_Normal".into(),
-        values: VertexAttributeValues::Float3(normals.iter().map(|n| [0.0, 1.0, 0.0]).collect()),
+        values: VertexAttributeValues::Float3(normals.iter().map(|n| [n.x(), n.y(), n.z()]).collect()),
     });
 
     // compute UVs

@@ -13,7 +13,7 @@ lazy_static! {
 pub trait HexLayout<HexCoord, SpaceCoord> {
     type HexCoordIterator: Iterator<Item = HexCoord>;
 
-    // fn distance_step(&self, h1: HexCoord, h2: HexCoord) -> i32;
+    //fn distance_step(&self, h1: HexCoord, h2: HexCoord) -> i32;
     // fn distance(&self, h1: HexCoord, h2: HexCoord) ->  f32;
 
     fn hex_to_space(&self, hex: HexCoord) -> SpaceCoord;
@@ -27,6 +27,9 @@ pub struct CubeHexCoord(pub i32, pub i32, pub i32);
 impl CubeHexCoord {
     pub fn from_axis_coord(q: i32, r: i32) -> Self {
         CubeHexCoord(q, r, -(q + r))
+    }
+    pub fn distance_step(&self, b: &CubeHexCoord) -> i32 {
+        (i32::abs(self.0 - b.0) + i32::abs(self.1 - b.1) + i32::abs(self.2 - b.2)) / 2
     }
 }
 impl Into<Vec2> for CubeHexCoord {
@@ -74,7 +77,7 @@ impl Default for CubeHexLayout {
     fn default() -> Self {
         CubeHexLayout {
             space_origin: CubeHexCoord(0, 0, 0),
-            size: 0.5,
+            size: 30.0,
         }
     }
 }

@@ -2,7 +2,12 @@ use bevy::prelude::*;
 use hex::*;
 use mesh::*;
 use noise::*;
-use std::{collections::HashSet, fmt::Debug, hash::Hash, time::Instant};
+use std::{
+    collections::HashSet,
+    fmt::Debug,
+    hash::Hash,
+    time::{Duration, Instant},
+};
 
 pub mod hex;
 mod mesh;
@@ -17,8 +22,10 @@ impl Plugin for TerrainPlugin {
             .init_resource::<TerrainOptions>()
             .add_startup_system(setup_chunk_tracker.system())
             .add_system(chunk_spawner.system())
+            .add_system(chunk_solver.system())
             .add_system(chunk_shaper.system())
-            .add_system(load_chunks.system());
+            .add_system(chunk_loader.system())
+            .add_system(chunk_despawner.system());
     }
 }
 
@@ -50,6 +57,7 @@ where
     pub loaded_chunks: HashSet<ChunkAddress>,
     pub placeholder_mesh: Option<Handle<Mesh>>,
     pub placeholder_material: Option<Handle<StandardMaterial>>,
+    pub timer: Timer,
 }
 impl<ChunkAddress> Default for ChunkTracker<ChunkAddress>
 where
@@ -60,6 +68,7 @@ where
             loaded_chunks: HashSet::new(),
             placeholder_material: None,
             placeholder_mesh: None,
+            timer: Timer::new(Duration::from_secs(5)),
         }
     }
 }
@@ -133,7 +142,7 @@ fn chunk_spawner(
         //println!("checking for chunks to spawn");
 
         // find neighboring chunks
-        let neighbors = hex_layout.get_neighbors(current_chunk, 50);
+        let neighbors = hex_layout.get_neighbors(current_chunk, 1);
 
         // spawn chunks
         for chunk in std::iter::once(current_chunk).chain(neighbors) {
@@ -152,11 +161,30 @@ fn chunk_spawner(
                     });
             }
         }
-
+        site.fresh = true;
         site.last_loaded_chunk = Some(current_chunk);
     }
 
     // create entities for chunks
+}
+
+fn chunk_solver(
+    mut query: Query<(&CubeHexCoord, &mut ChunkComponent)>,
+    mut site_query: Query<(Entity, &mut ChunkSite)>,
+) {
+    for (_entity, mut site) in &mut site_query.iter() {
+        // don't do anything if the site hasn't moved
+        if !site.fresh {
+            continue;
+        }
+        site.fresh = false;
+
+        // loop through all chunks and update distances
+        for (coord, mut chunk) in &mut query.iter() {
+            // TODO: handle multiple chunk sites
+            chunk.distance_to_nearest_site = site.last_loaded_chunk.unwrap().distance_step(coord);
+        }
+    }
 }
 
 fn chunk_shaper(
@@ -219,14 +247,14 @@ fn chunk_shaper(
     }
 }
 
-fn load_chunks(
+fn chunk_loader(
     hex_layout: Res<CubeHexLayout>,
     chunk_tracker: Res<ChunkTracker<CubeHexCoord>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut query: Query<(&CubeHexCoord, &mut ChunkComponent, &mut Handle<Mesh>)>,
+    mut query: Query<(&mut ChunkComponent, &mut Handle<Mesh>)>,
 ) {
     // enumerate chunks that needs to be loaded
-    for (chunk, mut chunk_info, mut mesh) in &mut query.iter() {
+    for (mut chunk_info, mut mesh) in &mut query.iter() {
         // skip chunks that are already loaded
         if chunk_info.chunk_loaded {
             continue;
@@ -257,20 +285,43 @@ fn load_chunks(
     }
 }
 
-fn unload_chunks() {
+fn chunk_despawner(
+    mut commands: Commands,
+    mut chunk_tracker: ResMut<ChunkTracker<CubeHexCoord>>,
+    time: Res<Time>,
+    mut query: Query<(Entity, &ChunkComponent, &CubeHexCoord)>,
+) {
+    // only try to unload when timer is done
+    chunk_tracker.timer.tick(time.delta_seconds);
+    if chunk_tracker.timer.finished {
+        for (entity, chunk_info, coord) in &mut query.iter() {
+            if chunk_info.distance_to_nearest_site > 5 {
+                // despawn chunk
+                commands.despawn(entity);
+
+                println!("Despawning {:?}", coord);
+                // TODO: queue and cleanup tasks
+            } else {
+                println!("phew, not despawning {:?}", coord);
+            }
+        }
+
+        chunk_tracker.timer.reset();
+    }
     // find chunks that can be unloaded
     // mark them for despawning
 }
 
-fn despawn_chunks() {
-    // find chunks marked for despawning
-    // save chunk data to disk
-    // despawn chunks
-}
+// fn chunk_cleaner() {
+//     // find chunks marked for despawning
+//     // save chunk data to disk
+//     // despawn chunks
+// }
 
 #[derive(Default, Debug)]
 pub struct ChunkSite {
     pub last_loaded_chunk: Option<CubeHexCoord>,
+    pub fresh: bool,
 }
 
 #[derive(Debug)]
@@ -278,6 +329,7 @@ pub struct ChunkComponent {
     pub chunk_loaded: bool,
     pub created: Instant,
     pub biome: f64,
+    pub distance_to_nearest_site: i32,
 }
 
 impl ChunkComponent {
@@ -286,6 +338,7 @@ impl ChunkComponent {
             chunk_loaded: false,
             created: time,
             biome,
+            distance_to_nearest_site: 0,
         }
     }
 }

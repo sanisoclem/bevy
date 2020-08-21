@@ -22,7 +22,6 @@ impl Default for DebugPlugin {
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut AppBuilder) {
-
         app.add_plugin(FrameTimeDiagnosticsPlugin::default())
             .add_resource(DebugState {
                 timer: Timer::new(self.wait_duration),
@@ -90,7 +89,7 @@ impl DebugPlugin {
 
     fn update_debug(
         generator: Res<ChunkGenerator>,
-        mut state: ResMut<DebugState>,
+        state: Res<DebugState>,
         mut query: Query<&mut Text>,
     ) {
         for mut text in &mut query.iter() {
@@ -120,7 +119,11 @@ impl DebugPlugin {
     ) {
         state.timer.tick(time.delta_seconds);
         if state.timer.finished {
-            state.message = diagnostics.iter().map(|diagnostic|Self::print_diagnostic(diagnostic)).collect::<Vec<_>>().join(";");
+            state.message = diagnostics
+                .iter()
+                .map(|diagnostic| Self::print_diagnostic(diagnostic))
+                .collect::<Vec<_>>()
+                .join(";");
 
             state.timer.reset();
         }
