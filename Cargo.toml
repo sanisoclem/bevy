@@ -27,6 +27,8 @@ flac = ["bevy_audio/flac"]
 wav = ["bevy_audio/wav"]
 vorbis = ["bevy_audio/vorbis"]
 
+serialize = ["bevy_input/serialize"]
+
 [workspace]
 members = [
     "crates/*",
@@ -123,6 +125,10 @@ path = "examples/app/headless.rs"
 [[example]]
 name = "plugin"
 path = "examples/app/plugin.rs"
+
+[[example]]
+name = "return_after_run"
+path = "examples/app/return_after_run.rs"
 
 [[example]]
 name = "thread_pool_resources"
